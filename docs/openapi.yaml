@@ -1,0 +1,64 @@
+openapi: 3.0.0
+info:
+  title: Appointment API
+  version: 1.0.0
+paths:
+  /appointment:
+    post:
+      summary: Crear agendamiento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentInput'
+      responses:
+        '202':
+          description: Agendamiento en proceso
+  /appointment/{insuredId}:
+    get:
+      summary: Listar agendamientos por asegurado
+      parameters:
+        - in: path
+          name: insuredId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Listado de agendamientos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+components:
+  schemas:
+    AppointmentInput:
+      type: object
+      required:
+        - insuredId
+        - scheduleId
+        - countryISO
+      properties:
+        insuredId:
+          type: string
+        scheduleId:
+          type: integer
+        countryISO:
+          type: string
+          enum: [PE, CL]
+    Appointment:
+      allOf:
+        - $ref: '#/components/schemas/AppointmentInput'
+        - type: object
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum: [pending, completed]
+            createdAt:
+              type: string
+              format: date-time
