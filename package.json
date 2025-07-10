@@ -1,0 +1,16 @@
+{
+  "name": "reto-rimac",
+  "version": "1.0.0",
+  "description": "Backend Serverless para agendamiento de citas",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1382.0"
+  }
+}

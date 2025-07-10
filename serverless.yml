@@ -1,0 +1,103 @@
+service: appointment-service
+frameworkVersion: '3'
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  environment:
+    DYNAMO_TABLE: ${self:service}-appointments
+    SNS_TOPIC_PE: snsAppointmentPE
+    SNS_TOPIC_CL: snsAppointmentCL
+    SQS_PE: sqsAppointmentPE
+    SQS_CL: sqsAppointmentCL
+    RESPONSE_QUEUE: appointmentResponse
+functions:
+  appointment:
+    handler: dist/handlers/appointment.handler
+    events:
+      - httpApi:
+          path: /appointment
+          method: post
+      - httpApi:
+          path: /appointment/{insuredId}
+          method: get
+  appointment_pe:
+    handler: dist/handlers/appointment_pe.handler
+    events:
+      - sqs:
+          arn: !GetAtt SqsPE.Arn
+  appointment_cl:
+    handler: dist/handlers/appointment_cl.handler
+    events:
+      - sqs:
+          arn: !GetAtt SqsCL.Arn
+  update_status:
+    handler: dist/handlers/update_status.handler
+    events:
+      - sqs:
+          arn: !GetAtt ResponseQueue.Arn
+resources:
+  Resources:
+    DynamoTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMO_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: insuredId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: InsuredIndex
+            KeySchema:
+              - AttributeName: insuredId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    TopicPE:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:provider.environment.SNS_TOPIC_PE}
+    TopicCL:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:provider.environment.SNS_TOPIC_CL}
+    SqsPE:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:provider.environment.SQS_PE}
+    SqsCL:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:provider.environment.SQS_CL}
+    ResponseQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:provider.environment.RESPONSE_QUEUE}
+    EventRule:
+      Type: AWS::Events::Rule
+      Properties:
+        EventPattern:
+          source:
+            - 'appointment.complete'
+        Targets:
+          - Arn: !GetAtt ResponseQueue.Arn
+            Id: targetSQS
+    PermissionPE:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Endpoint: !GetAtt SqsPE.Arn
+        Protocol: sqs
+        TopicArn: !Ref TopicPE
+        RawMessageDelivery: true
+    PermissionCL:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Endpoint: !GetAtt SqsCL.Arn
+        Protocol: sqs
+        TopicArn: !Ref TopicCL
+        RawMessageDelivery: true
